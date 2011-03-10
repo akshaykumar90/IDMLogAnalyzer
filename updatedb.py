@@ -49,24 +49,27 @@ def main():
                     (filepath, filename) = os.path.split(name)
                     (shortname, extension) = os.path.splitext(filename)
                     
-                    filesize = long(m_size.group(1))/1000
+                    filesize = long(m_size.group(1))/1024
                     
                     query = """insert into download (name, filetype, date, time, filesize) values (?, ?, ?, ?, ?)"""
                     cursor.execute(query, (filename, extension, str(date), str(time), filesize))
                     # print filename + " | " + extension + " | " + str(downloaded_on) + " | " + str(filesize)
                     print '-',
-                    progress = progress + 1
-                    if progress % 25 == 0:
-                        print
+
                     conn.commit()
                 else:
-                    print "Malformed Log File %s" % log_file_path
-                    if not m_time:
-                        print "m_time not found"
-                    if not m_name:
-                        print "m_name not found"
-                    if not m_size:
-                        print "m_size not found"
+                    print '*',
+                    # print "Malformed Log File %s" % log_file_path
+                    # if not m_time:
+                        # print "m_time not found"
+                    # if not m_name:
+                        # print "m_name not found"
+                    # if not m_size:
+                        # print "m_size not found"
+
+                progress = progress + 1
+                if progress % 25 == 0:
+                    print progress
     finally:
         conn.close()
     
