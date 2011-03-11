@@ -11,12 +11,20 @@ def main():
     time_pattern = re.compile(r"Time: (.*)$", re.MULTILINE)
     name_pattern = re.compile(r"^Rename temp file (?:.*?) to (.*?)\.$", re.MULTILINE)
     size_pattern = re.compile(r"^Download complete. Downloaded (\d*) Bytes Total$", re.MULTILINE)
+
+    progress        = 0
+    new_items       = 0
+    std_fmtstring   = "%Y-%m-%d %H:%M:%S"
     
     conn = sqlite3.connect(db_filename)
     cursor = conn.cursor()
     
-    progress    = 0;
-    valid_items = 0;
+    cursor.execute("SELECT update_date FROM changelog ORDER BY id DESC LIMIT 1")
+    row_tuple = cursor.fetchone()
+    if row_tuple is not None:
+        db_last_updated = datetime.datetime.strptime(row_tuple[0], std_fmtstring)
+    else:
+        db_last_updated = datetime.datetime(2000, 1, 1)
     
     try:
         for f in os.listdir(root_dir):
@@ -26,12 +34,19 @@ def main():
                 globbed_files = glob.glob(glob_path)
                 if len(globbed_files) == 0:
                     # print "No log file exists in %s" % sub_dir
-                    print '#',
+                    print '%',
                     progress = progress + 1
                     if progress % 25 == 0:
                         print progress
                     continue
                 log_file_path = globbed_files[0]
+                last_modified = datetime.datetime.fromtimestamp(os.stat(log_file_path).st_mtime)
+                if last_modified < db_last_updated:
+                    print '-',
+                    progress = progress + 1
+                    if progress % 25 == 0:
+                        print progress
+                    continue
                 
                 log_file = open(log_file_path, "r")
                 log_file_str = log_file.read()
@@ -74,8 +89,8 @@ def main():
                     
                     query = """insert into download (name, extension, category, date, time, filesize) values (?, ?, ?, ?, ?, ?)"""
                     cursor.execute(query, (shortname, extension, category, str(date), str(time), filesize))
-                    print '-',
-                    valid_items = valid_items + 1;
+                    print '*',
+                    new_items = new_items + 1;
 
                     conn.commit()
                 else:
@@ -94,8 +109,8 @@ def main():
 
         print progress
         query = """insert into changelog (update_date, new_items) values (?, ?)"""
-        print datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " | " + str(valid_items)
-        cursor.execute(query, (datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), valid_items))
+        print datetime.datetime.now().strftime(std_fmtstring) + " | " + str(new_items)
+        cursor.execute(query, (datetime.datetime.now().strftime(std_fmtstring), new_items))
         conn.commit()
     finally:
         conn.close()
