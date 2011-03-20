@@ -8,16 +8,18 @@ import datetime
 import sys
 
 class SqliteInterface:
-    def __init__(self, db_filename, timescale, grouping, category, **kwargs):
+    def __init__(self, db_filename, timescale='all', category='all', time_wise_grouping='no', \
+                 category_wise_grouping=False, **kwargs):
         self.db_filename = db_filename
         self.timescale = timescale
-        self.grouping = grouping
+        self.time_wise_grouping = time_wise_grouping
+        self.category_wise_grouping = category_wise_grouping
         self.category = category
         if self.timescale != "all":
             self.period = kwargs['period']
 
-    def __generateSQLScript(self, select_time=False, category=False, start_date=False, \
-                            end_date=False, group_by_date=True, group_by_category=False):
+    def __generateSQLScript(self, category=False, start_date=False, end_date=False, \
+                            group_files=False, **kwargs):
         select_sql   = "SELECT"
         from_sql     = "FROM download"
         where_sql    = "WHERE"
@@ -29,31 +31,39 @@ class SqliteInterface:
         group_by_clause = []
         order_by_clause = []
         
-        if group_by_date:
-            select_clause.append('date')
-            order_by_clause.append('date')
-            group_by_clause.append('date')
-        if select_time:
-            select_clause.append('time')
-        if group_by_date or group_by_category:
+        if group_files and kwargs.has_key('group_by'):
+            grouping_element = kwargs['group_by']
+        else:
+            grouping_element = None
+        
+        if group_files:
+            if grouping_element == 'date':
+                select_clause.append('date')
+                order_by_clause.append('date')
+                group_by_clause.append('date')
+            elif grouping_element == 'category':
+                select_clause.append('category')
+                group_by_clause.append('category')
+                order_by_clause.append('category')
+            else:
+                pass
             select_clause.append('SUM(filesize) AS fs')
         else:
+            select_clause.append('date')
+            select_clause.append('time')
             select_clause.append('filesize AS fs')
-        if group_by_category:
-            select_clause.append('category')
-            group_by_clause.append('category')
-            order_by_clause.append('category')
+            order_by_clause.append('date')
+            order_by_clause.append('time')
         if start_date:
             where_clause.append('date > ?')
         if end_date:
             where_clause.append('date < ?')
         if category:
             where_clause.append('category = ?')
-        if not group_by_date and not group_by_category:
-            order_by_clause.append('time')
         
         if not where_clause: where_sql = ""
         if not group_by_clause: group_by_sql = ""
+        if not order_by_clause: order_by_sql = ""
         
         return " ".join([select_sql, ",".join(select_clause),     \
                         from_sql,                                 \
@@ -113,18 +123,59 @@ class SqliteInterface:
         
         if self.timescale != "all":
             timescale_lower, timescale_upper = self.__getDateTuple(self.timescale, self.period)
-        else:
+            if self.time_wise_grouping == "month" or self.time_wise_grouping == "year":
+                date_list = self.__getDateList(timescale_lower, timescale_upper, self.time_wise_grouping)
+                n_queries = len(date_list) - 1
+            else:
+                date_list = [ timescale_lower, timescale_upper ]
+                n_queries = 1
+        elif self.time_wise_grouping == "month" or self.time_wise_grouping == "year":
             cursor.execute("""SELECT date FROM download ORDER BY date LIMIT 1""")
             timescale_lower, = cursor.fetchone()
             cursor.execute("""SELECT date FROM download ORDER BY date DESC LIMIT 1""")
             timescale_upper, = cursor.fetchone()
-        
-        if self.grouping == "month" or self.grouping == "year":
-            date_list = self.__getDateList(timescale_lower, timescale_upper, self.grouping)
+            date_list = self.__getDateList(timescale_lower, timescale_upper, self.time_wise_grouping)
             n_queries = len(date_list) - 1
         else:
+            date_list = None
             n_queries = 1
+            
+        if self.category == "all":
+            category = False
+        else:
+            category = True
         
+        if date_list:
+            start_date = True
+            end_date = True
+        else:
+            start_date = False
+            end_date = False
+        
+        if self.time_wise_grouping == 'no':
+            select_time = True
+            group_by_category = False
+            group_by_date = False
+        elif self.time_wise_grouping == 'date':
+            select_time = False
+            group_by_date = True
+            sum_filesize = True
+        else:
+            select_time = False
+            group_by_date = False
+            sum_filesize = True
+        
+        if self.category_wise_grouping:
+            group_by_category = True
+            group_by_date = False
+        else:
+            group_by_category = False
+            group_by_date = False
+        
+        if self.time_wise_grouping == 'no' and self.timescale == 'week':
+            group_by_date = False
+            select_time = True
+            
         conn.close()
 
 class LineChart:
