@@ -7,9 +7,11 @@ from matplotlib.dates import MONDAY
 import datetime
 import sys
 
-class SqliteInterface:
+class SqliteInterface:    
     def __init__(self, db_filename, timescale='all', category='all', time_wise_grouping='date', \
                  category_wise_grouping=False, **kwargs):
+        self.categoryList = ['Compressed', 'Documents', 'General', 'Music', 'Programs', 'Video']
+        
         self.db_filename = db_filename
         self.timescale = timescale
         self.time_wise_grouping = time_wise_grouping
@@ -120,7 +122,20 @@ class SqliteInterface:
                 year = year + 1
         
         return date_list
-        
+    
+    def strToDateTime(self, date_str_list, fmt=None):
+        if fmt == None:
+            fmt = "%Y-%m-%d"
+        return [datetime.datetime.strptime(dt_str, fmt) for dt_str in date_str_list]
+    
+    def __getXRange(self, x_list, delta):
+        date_list = self.strToDateTime(x_list)
+        if delta == 'month':
+            fmt = "%b '%y"
+        elif delta == 'year':
+            fmt = "%Y"
+        return [dt_obj.strftime(fmt) for dt_obj in date_list[:-1]]
+    
     def getData(self):
         conn = sqlite3.connect(self.db_filename)
         cursor = conn.cursor()
@@ -131,6 +146,8 @@ class SqliteInterface:
         end_date    = False
         group_files = False
         group_by    = None
+        xvalues     = []
+        yvalues     = []
         
         if self.timescale != "all":
             timescale_lower, timescale_upper = self.__getDateTuple(self.timescale, self.period)
@@ -139,6 +156,7 @@ class SqliteInterface:
                 date_list = self.__getDateList(timescale_lower, timescale_upper, self.time_wise_grouping)
                 n_queries = len(date_list) - 1
                 group_files = True
+                xvalues = self.__getXRange(date_list, self.time_wise_grouping)
             else:
                 # Dataset No. 1 & 2
                 date_list = [ timescale_lower.strftime("%Y-%m-%d"), timescale_upper.strftime("%Y-%m-%d") ]
@@ -158,6 +176,7 @@ class SqliteInterface:
             date_list = self.__getDateList(timescale_lower, timescale_upper, self.time_wise_grouping, raw_dates=True)
             n_queries = len(date_list) - 1
             group_files = True
+            xvalues = self.__getXRange(date_list, self.time_wise_grouping)
         else:
             # Dataset No. 1 & 2
             date_list = None
@@ -178,17 +197,19 @@ class SqliteInterface:
                 # Dataset No. 6
                 group_files = True
                 group_by = 'category'
+                xvalues = self.__getXRange(date_list, self.time_wise_grouping)
             elif self.time_wise_grouping == 'date':
                 # Dataset No. 5
                 n_queries = 6
                 group_files = True
                 group_by = 'date'
                 category = True
-                category_list = ['Compressed', 'Documents', 'General', 'Music', 'Programs', 'Video']
+                category_list = self.categoryList
             else:
                 # Dataset No. 3
                 group_files = True
                 group_by = 'category'
+                xvalues = self.categoryList
         
         if date_list:
             start_date = True
@@ -208,10 +229,31 @@ class SqliteInterface:
             
             queryStr = self.__generateSQLScript(category, start_date, end_date, group_files, group_by=group_by)
             arg_tuple = tuple(arguments)
-            # cursor.execute(queryStr, arg_tuple)
             print queryStr, ',', arg_tuple
+            cursor.execute(queryStr, arg_tuple)
+            
+            if len(cursor.description) == 3:
+                raw_data = [(date, time, filesize) for (date, time, filesize) in cursor.fetchall()]
+                xvalues = [datetime.datetime.strptime(date + " " + time, "%Y-%m-%d %H:%M:%S") for (date, time, filesize) in raw_data]
+                yvalues = [filesize for (date, time, filesize) in raw_data]
+            elif len(cursor.description) == 2:
+                raw_data = [(x, y) for (x, y) in cursor.fetchall()]
+                if cursor.description[0][0] == 'date':
+                    xvalues = [datetime.datetime.strptime(date, "%Y-%m-%d") for (date, filesize) in raw_data]
+                    yvalues = [fs for (date, fs) in raw_data]
+                elif cursor.description[0][0] == 'category':
+                    if self.time_wise_grouping == 'no':
+                        yvalues = [fs for (category_name, fs) in raw_data]
+                    else:
+                        y = [fs for (category_name, fs) in raw_data]
+                        yvalues.append(y)
+            else:
+                y = cursor.fetchone()
+                yvalues.append(y)
         
         conn.close()
+        
+        return (xvalues, yvalues)
 
 class LineChart:
     def __init__(self, timescale):
