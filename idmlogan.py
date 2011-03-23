@@ -2,7 +2,7 @@ import getopt
 import sqlite3
 import matplotlib.dates as mpldates
 import matplotlib.pyplot as plt
-from matplotlib.dates import MonthLocator, WeekdayLocator, DateFormatter
+from matplotlib.dates import MonthLocator, WeekdayLocator, DateFormatter, DayLocator, HourLocator
 from matplotlib.dates import MONDAY
 import datetime
 import sys
@@ -256,26 +256,40 @@ class SqliteInterface:
         return (xvalues, yvalues)
 
 class LineChart:
-    def __init__(self, timescale):
+    def __init__(self, xvalues, yvalues, timescale, use_plot_date):
+        self.xvalues = xvalues
+        self.yvalues = yvalues
         self.timescale = timescale
+        self.use_plot_date = use_plot_date
     
     def draw(self):
-        months = MonthLocator()
-        monthsFmt = DateFormatter("%b '%y")
-        weekFmt = DateFormatter("%m/%d")
-        mondays = WeekdayLocator(MONDAY)
-
         fig = plt.figure()
         ax = fig.add_subplot(111)
-        ax.plot_date(x,y,'-')
         
-        if self.timescale == "all" or self.timescale == "year":
-            ax.xaxis.set_major_locator(months)
-            ax.xaxis.set_major_formatter(monthsFmt)
-            ax.xaxis.set_minor_locator(mondays)
-        else:
-            ax.xaxis.set_major_formatter(weekFmt)
-            ax.xaxis.set_major_locator(mondays)
+        if use_plot_date:
+            self.xvalues = mpldates.date2num(self.xvalues)
+            ax.plot_date(self.xvalues, self.yvalues, '-')
+            
+            months  = MonthLocator()
+            mondays = WeekdayLocator(MONDAY)
+            days    = DayLocator()
+            hours   = HourLocator(interval=6)
+            
+            monthsFmt   = DateFormatter("%b '%y")
+            daysFmt     = DateFormatter("%m/%d")
+            
+            if self.timescale == 'all' or self.timescale == 'year':
+                ax.xaxis.set_major_locator(months)
+                ax.xaxis.set_major_formatter(monthsFmt)
+                ax.xaxis.set_minor_locator(mondays)
+            elif self.timescale == 'month':
+                ax.xaxis.set_major_formatter(daysFmt)
+                ax.xaxis.set_major_locator(mondays)
+                ax.xaxis.set_minor_locator(days)
+            else:
+                ax.xaxis.set_major_locator(days)
+                ax.xaxis.set_major_formatter(daysFmt)
+                ax.xaxis.set_minor_locator(hours)
         
         ax.autoscale_view()
         ax.grid(True)
