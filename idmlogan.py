@@ -57,7 +57,7 @@ class SqliteInterface:
             order_by_clause.append('date')
             order_by_clause.append('time')
         if start_date:
-            where_clause.append('date > ?')
+            where_clause.append('date >= ?')
         if end_date:
             where_clause.append('date < ?')
         if category:
@@ -266,7 +266,7 @@ class LineChart:
         fig = plt.figure()
         ax = fig.add_subplot(111)
         
-        if use_plot_date:
+        if self.use_plot_date:
             self.xvalues = mpldates.date2num(self.xvalues)
             ax.plot_date(self.xvalues, self.yvalues, '-')
             
@@ -290,6 +290,9 @@ class LineChart:
                 ax.xaxis.set_major_locator(days)
                 ax.xaxis.set_major_formatter(daysFmt)
                 ax.xaxis.set_minor_locator(hours)
+        else:
+            ax.plot(self.yvalues)
+            ax.set_xticklabels(self.xvalues)
         
         ax.autoscale_view()
         ax.grid(True)
