@@ -242,7 +242,7 @@ class SqliteInterface:
                         y = [fs for (category_name, fs) in raw_data]
                         yvalues.append(y)
             else:
-                y = cursor.fetchone()
+                y, = cursor.fetchone()
                 yvalues.append(y)
         
         conn.close()
