@@ -238,12 +238,13 @@ class SqliteInterface:
                 elif cursor.description[0][0] == 'category':
                     category_column = [category_name for (category_name, fs) in raw_data]
                     y = [fs for (category_name, fs) in raw_data]
-                    for j in range(len(self.categoryList)):
-                        if category_column[j] == self.categoryList[j]:
-                            continue
-                        else:
-                            y.insert(j, 0)
-                            category_column.insert(j, self.categoryList[j])
+                    if category_column:
+                        for j in range(len(self.categoryList)):
+                            if category_column[j] == self.categoryList[j]:
+                                continue
+                            else:
+                                y.insert(j, 0)
+                                category_column.insert(j, self.categoryList[j])
                     if self.time_wise_grouping == 'no':
                         yvalues = y
                     else:
