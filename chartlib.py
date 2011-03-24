@@ -112,12 +112,15 @@ class BarChart:
             colors = ['b','g','c','m','r','y']
             for i in range(len(self.xvalues)):
                 bottom = 0
-                k = 0    
+                k = 0
+                patches = []
                 for j in self.yvalues[i]:
-                    ax.bar(i+1, j, bottom=bottom, width=width, color = colors[k])
+                    p = ax.bar(i+1, j, bottom=bottom, width=width, color = colors[k])
+                    patches.append(p)
                     bottom = bottom + j
                     k = k + 1
-        
+            leg = plt.legend(tuple(patches), ('Compressed', 'Documents', 'General', 'Music', 'Programs', 'Video'), loc='best')
+            leg.get_frame().set_alpha(0.4)
         ticks_loc = [i + width / 2 for i in locs]
         ax.set_xticks(ticks_loc)
         ax.set_xticklabels(self.xvalues)
