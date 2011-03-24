@@ -100,6 +100,17 @@ class BarChart:
         
         return i
     
+    def __stripnulls(self, y_list):
+        new_y_list = []
+        
+        for n in y_list:
+            if n == None:
+                new_y_list.append(0)
+            else:
+                new_y_list.append(n)
+        
+        return new_y_list
+    
     def draw(self):
         fig = plt.figure()
         ax = fig.add_subplot(111)
@@ -107,6 +118,7 @@ class BarChart:
         width = 0.8
         locs = range(1, len(self.xvalues) + 1)
         if self.stacked_bar_graph == False:
+            self.yvalues = self.__stripnulls(self.yvalues)
             ax.bar(locs, self.yvalues, width=width)
         else:
             colors = ['b','g','c','m','r','y']
