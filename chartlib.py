@@ -141,3 +141,18 @@ class BarChart:
         fig.autofmt_xdate()
         
         plt.show()
+
+class PieChart:
+    def __init__(self, xvalues, yvalues):
+        self.xvalues = xvalues
+        self.yvalues = yvalues
+    
+    def draw(self):
+        fig = plt.figure(figsize=(7.5,7.5))
+        ax = fig.add_subplot(111)
+        
+        colors = ['b','g','c','m','r','y']
+        explode = [0.05] * len(self.xvalues)
+        ax.pie(self.yvalues, labels=self.xvalues, explode=explode, colors=colors, autopct='%1.1f%%')
+        
+        plt.show()
