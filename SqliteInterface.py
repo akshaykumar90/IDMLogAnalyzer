@@ -11,6 +11,8 @@ class SqliteInterface:
         self.time_wise_grouping = time_wise_grouping
         self.category_wise_grouping = category_wise_grouping
         self.category = category
+        self.xvalues_as_datetime = False
+        self.yvalues_as_list = False
         if self.timescale != "all":
             self.period = kwargs['period']
 
@@ -130,6 +132,12 @@ class SqliteInterface:
             fmt = "%Y"
         return [dt_obj.strftime(fmt) for dt_obj in date_list[:-1]]
     
+    def get_xvalues_type(self):
+        return self.xvalues_as_datetime
+    
+    def get_yvalues_type(self):
+        return self.yvalues_as_list
+    
     def getData(self):
         conn = sqlite3.connect(self.db_filename)
         cursor = conn.cursor()
@@ -155,6 +163,7 @@ class SqliteInterface:
                 # Dataset No. 1 & 2
                 date_list = [ timescale_lower.strftime("%Y-%m-%d"), timescale_upper.strftime("%Y-%m-%d") ]
                 n_queries = 1
+                self.xvalues_as_datetime = True
                 if self.time_wise_grouping == 'date':
                     # Dataset No. 1
                     group_files = True
@@ -175,6 +184,7 @@ class SqliteInterface:
             # Dataset No. 1 & 2
             date_list = None
             n_queries = 1
+            self.xvalues_as_datetime = True
             if self.time_wise_grouping == 'date':
                 # Dataset No. 1
                 group_files = True
@@ -192,6 +202,7 @@ class SqliteInterface:
                 group_files = True
                 group_by = 'category'
                 xvalues = self.__getXRange(date_list, self.time_wise_grouping)
+                self.yvalues_as_list = True
             elif self.time_wise_grouping == 'date':
                 # Dataset No. 5
                 n_queries = 6
